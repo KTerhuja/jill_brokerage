@@ -48,7 +48,7 @@ predicted = train.train_ts(target_train_ts,interest_rates_series,gdp_series,sess
 session['predicted'] = predicted
 
 
-plot_df = utils.combine(target_train_ts,predicted)
+plot_df = utils.combine(target_train_ts,predicted).rename(columns = {input_broker: 'Broker Target ($)'})
 # st.dataframe(plot_df)
 
 # st.dataframe(plot_df)
@@ -59,19 +59,19 @@ with l:
     fig = px.line(
         plot_df,
         x=plot_df.index,
-        y=f"{input_broker}",
+        y='Broker Target ($)',
         color="tag",
         title=f"Forecasted Broker target",
         color_discrete_sequence=["mediumspringgreen","crimson"],
         height=600
         )
     
-    fig.update_layout({ 'plot_bgcolor': '#4E6E81'})
+    fig.update_layout({ 'plot_bgcolor': '#F5EDED'})
     st.plotly_chart(fig)
 
 with r: 
 
-    predicted = predicted.pd_dataframe()
+    predicted = predicted.pd_dataframe().rename(columns = {input_broker: 'Broker Target ($)'})
     st.dataframe(predicted)
     
 #     fig.update_layout(
