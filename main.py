@@ -62,13 +62,14 @@ with l:
         y=f"{input_broker}",
         color="tag",
         title=f"Forecasted Broker target",
-        color_discrete_sequence=["dodgerblue","mediumspringgreen","crimson"],
+        color_discrete_sequence=["mediumspringgreen","crimson"],
         height=600
         )
     
+    fig.update_layout({ 'plot_bgcolor': '#4E6E81'})
     st.plotly_chart(fig)
 
-with r:
+with r: 
 
     predicted = predicted.pd_dataframe()
     st.dataframe(predicted)
