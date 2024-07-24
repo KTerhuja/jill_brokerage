@@ -31,6 +31,7 @@ with st.sidebar:
     input_external_factor = st.selectbox("External Variables", types_external_factors)
     session['input_borker'] = input_broker
     session['input_external_factor'] = input_external_factor
+    
 
 
 l1,r1 = st.columns([2,2])
@@ -49,34 +50,29 @@ session['predicted'] = predicted
 
 
 plot_df = utils.combine(target_train_ts,predicted).rename(columns = {input_broker: 'Broker Target ($)'})
-# st.dataframe(plot_df)
 
-# st.dataframe(plot_df)
-
-l,r = st.columns([3,1])
-
-with l:
-    fig = px.line(
+fig = px.line(
         plot_df,
         x=plot_df.index,
         y='Broker Target ($)',
         color="tag",
         title=f"Forecasted Broker target",
-        color_discrete_sequence=["mediumspringgreen","crimson"],
-        height=600
+        color_discrete_sequence=["green","crimson"],
+        height=700,
+        width= 1000
         )
     
-    fig.update_layout({ 'plot_bgcolor': '#F5EDED'})
-    st.plotly_chart(fig)
+fig.update_layout({ 'plot_bgcolor': '#F5EDED'})
+st.plotly_chart(fig)
+# st.dataframe(plot_df)
 
-with r: 
+# st.dataframe(plot_df)
 
-    predicted = predicted.pd_dataframe().rename(columns = {input_broker: 'Broker Target ($)'})
+with st.sidebar:
+    predicted = predicted.pd_dataframe().rename(columns = {input_broker: 'Predicted Target ($)'})
     st.dataframe(predicted)
+
     
-#     fig.update_layout(
-#     xaxis_title="Year", yaxis_title="New HIV Population"
-# )
 
 
 
