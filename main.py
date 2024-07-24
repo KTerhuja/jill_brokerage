@@ -4,6 +4,7 @@ from darts.timeseries import TimeSeries
 from src import train, utils
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 
 #load data
 
@@ -46,12 +47,15 @@ target_train_ts = actual_target_data_ts[input_broker]
 predicted = train.train_ts(target_train_ts,interest_rates_series,gdp_series,session['input_years'], session['input_external_factor'])
 
 
-session['predicted'] = predicted
+
+predicted_df = predicted.pd_dataframe().reset_index()
+
+session['predicted'] = predicted_df
 
 
 plot_df = utils.combine(target_train_ts,predicted).rename(columns = {input_broker: 'Broker Target ($)'})
 
-fig = px.line(
+fig_line = px.line(
         plot_df,
         x=plot_df.index,
         y='Broker Target ($)',
@@ -61,9 +65,38 @@ fig = px.line(
         height=700,
         width= 1000
         )
-    
-fig.update_layout({ 'plot_bgcolor': '#F5EDED'})
-st.plotly_chart(fig)
+
+
+fig_area = go.Figure()
+
+fig_area.add_trace(go.Scatter(x=predicted_df['FiscalYear'], y =predicted_df['upper'],
+    fill=None,
+    mode='lines',
+    line_color='indigo',
+    ))
+fig_area.add_trace(go.Scatter(
+    x=predicted_df['FiscalYear'], y =predicted_df['lower'],
+    fill='tonexty', # fill area between trace0 and trace1
+    mode='lines', line_color='indigo'))
+
+
+
+fig_combined = go.Figure(data=fig_line.data + fig_area.data)
+
+# Update layout for combined figure
+fig_combined.update_layout(
+    title='Combined Forecasted Broker Target and Prediction Range',
+    xaxis_title='Year',
+    yaxis_title='Value',
+    height=700,
+    width=1000
+)
+
+# Show the combined figure
+# fig_combined.show()  
+fig_combined.update_layout({ 'plot_bgcolor': '#F5EDED'})
+st.plotly_chart(fig_combined)
+st.plotly_chart(fig_area)
 # st.dataframe(plot_df)
 
 # st.dataframe(plot_df)
@@ -71,6 +104,9 @@ st.plotly_chart(fig)
 with st.sidebar:
     predicted = predicted.pd_dataframe().rename(columns = {input_broker: 'Predicted Target ($)'})
     st.dataframe(predicted)
+
+
+st.json(session)
 
     
 
