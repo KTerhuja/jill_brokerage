@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 ## actual data
 st.caption("""
 <style>body
-{zoom: 80%;}
+{zoom: 60%;}
 </style>
 """,
 unsafe_allow_html
