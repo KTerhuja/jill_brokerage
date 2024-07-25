@@ -10,19 +10,6 @@ import plotly.graph_objects as go
 
 ## actual data
 
-hide = '''
-    <style>
-    MainMenu {visibility:hidden;}
-    header {visibility:hidden;}
-    footer {visibility:hidden;}
-    .css-1b9x38r {
-        display: none;
-        }
-    </style>
-    '''
-st.markdown(hide, unsafe_allow_html=True)
-st.write(
-    '<style>div.block-container{padding-top:0rem;}</style>', unsafe_allow_html=True)
 session = st.session_state
 
 actual_target_data = pd.read_excel('./data/filtered_filledna.xlsx')
