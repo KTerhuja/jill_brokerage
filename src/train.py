@@ -23,8 +23,8 @@ def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input
         prediction_rf = rf.predict(input_years - 2023)
         
 
-        lower_bound = prediction_rf - 0.82
-        upper_bound = prediction_rf + 0.82
+        lower_bound = prediction_rf - 0.572
+        upper_bound = prediction_rf + 0.572
 
         scaled_predicted = target_scaler.inverse_transform(prediction_rf)
 
@@ -45,8 +45,8 @@ def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input
         rf.fit([scaled_target_series,scaled_ir_series])
         prediction_rf = rf.predict(input_years - 2023,scaled_target_series)
 
-        lower_bound = prediction_rf - 0.82
-        upper_bound = prediction_rf + 0.82
+        lower_bound = prediction_rf - 0.572
+        upper_bound = prediction_rf + 0.572
 
         scaled_predicted = target_scaler.inverse_transform(prediction_rf)
 
@@ -66,8 +66,8 @@ def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input
         rf.fit([scaled_target_series,scaled_gdp_series])
         prediction_rf = rf.predict(input_years - 2023,scaled_target_series)
 
-        lower_bound = prediction_rf - 0.82
-        upper_bound = prediction_rf + 0.82
+        lower_bound = prediction_rf - 0.572
+        upper_bound = prediction_rf + 0.572
 
         scaled_predicted = target_scaler.inverse_transform(prediction_rf)
 

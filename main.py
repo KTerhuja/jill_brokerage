@@ -27,8 +27,9 @@ types_external_factors = ['None','Interest Rates', 'GDP']
 st.set_page_config(page_title="Jill Brokerage Target",page_icon="📈",layout="wide")
 st.markdown("#### Forecasted Broker Target")
 
+
 with st.sidebar:
-    input_broker = st.selectbox("Choose Broker",brokers)
+    input_broker = st.selectbox("Choose Broker",brokers, placeholder='Haggar, James')
     input_external_factor = st.selectbox("External Variables", types_external_factors)
     session['input_borker'] = input_broker
     session['input_external_factor'] = input_external_factor
@@ -50,63 +51,89 @@ predicted = train.train_ts(target_train_ts,interest_rates_series,gdp_series,sess
 
 predicted_df = predicted.pd_dataframe().reset_index()
 
+target_train_df = target_train_ts.pd_dataframe().tail(1).reset_index()
+
+target_train_df['lower'] = target_train_df[input_broker]
+target_train_df['upper'] = target_train_df[input_broker]
+
+
+session['target_train_df'] = target_train_df
+
+predicted_df = pd.concat([target_train_df,predicted_df])
+
 session['predicted'] = predicted_df
 
 
-plot_df = utils.combine(target_train_ts,predicted).rename(columns = {input_broker: 'Broker Target ($)'})
 
-fig_line = px.line(
-        plot_df,
-        x=plot_df.index,
-        y='Broker Target ($)',
-        color="tag",
-        title=f"Forecasted Broker target",
-        color_discrete_sequence=["green","crimson"],
+l, r = st.columns([2.7,1])
+
+with l:
+
+    st.markdown('')
+
+    plot_df = utils.combine(target_train_ts,predicted).rename(columns = {input_broker: 'Broker Target ($)'})
+
+    fig_line = px.line(
+            plot_df,
+            x=plot_df.index,
+            y='Broker Target ($)',
+            color="tag",
+            title=f"Forecasted Broker target",
+            color_discrete_sequence=["green","crimson"],
+            height=700,
+            width= 1000
+            )
+
+
+    fig_area = go.Figure()
+
+    fig_area.add_trace(go.Scatter(x=predicted_df['FiscalYear'], y =predicted_df['upper'],
+        fill=None,
+        mode='lines',
+        line_color='indigo',
+        showlegend = False
+        ))
+    fig_area.add_trace(go.Scatter(
+        x=predicted_df['FiscalYear'], y =predicted_df['lower'],
+        fill='tonexty', # fill area between trace0 and trace1
+        mode='lines', line_color='indigo',
+        showlegend = False
+        ))
+
+
+
+    fig_combined = go.Figure(data=fig_line.data + fig_area.data)
+
+    # Update layout for combined figure
+    fig_combined.update_layout(
+        title=f'Forecasted target for {input_broker}',
+        title_x=0.3,
+        xaxis_title='Year',
+        yaxis_title='Value',
         height=700,
-        width= 1000
-        )
+        width=1000
+    )
 
+    # Show the combined figure
+    # fig_combined.show()  
+    fig_combined.update_layout({ 'plot_bgcolor': '#F5EDED'})
+    st.plotly_chart(fig_combined)
+    # st.plotly_chart(fig_area)
+    # st.dataframe(plot_df)
 
-fig_area = go.Figure()
-
-fig_area.add_trace(go.Scatter(x=predicted_df['FiscalYear'], y =predicted_df['upper'],
-    fill=None,
-    mode='lines',
-    line_color='indigo',
-    ))
-fig_area.add_trace(go.Scatter(
-    x=predicted_df['FiscalYear'], y =predicted_df['lower'],
-    fill='tonexty', # fill area between trace0 and trace1
-    mode='lines', line_color='indigo'))
+    # st.dataframe(plot_df)
 
 
 
-fig_combined = go.Figure(data=fig_line.data + fig_area.data)
-
-# Update layout for combined figure
-fig_combined.update_layout(
-    title='Combined Forecasted Broker Target and Prediction Range',
-    xaxis_title='Year',
-    yaxis_title='Value',
-    height=700,
-    width=1000
-)
-
-# Show the combined figure
-# fig_combined.show()  
-fig_combined.update_layout({ 'plot_bgcolor': '#F5EDED'})
-st.plotly_chart(fig_combined)
-st.plotly_chart(fig_area)
-# st.dataframe(plot_df)
-
-# st.dataframe(plot_df)
-
-with st.sidebar:
+with r:
+    st.markdown(f'✦ Predicted Target range for {input_broker} ')
     predicted = predicted.pd_dataframe().rename(columns = {input_broker: 'Predicted Target ($)'})
-    st.dataframe(predicted)
+
+    style_predicted = utils.style_df(predicted)
+    st.table(style_predicted)
 
 
-st.json(session)
+# st.json(session)
 
     
 
