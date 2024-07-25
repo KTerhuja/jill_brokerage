@@ -137,6 +137,14 @@ with r:
 
 # st.json(session)
 
+st.caption("""
+<style>body
+{zoom: 70%;}
+</style>
+""",
+unsafe_allow_html
+=True) 
+
     
 
 
