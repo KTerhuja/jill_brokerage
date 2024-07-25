@@ -9,13 +9,7 @@ import plotly.graph_objects as go
 #load data
 
 ## actual data
-st.caption("""
-<style>body
-{zoom: 60%;}
-</style>
-""",
-unsafe_allow_html
-=True) 
+
 
 session = st.session_state
 
