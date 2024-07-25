@@ -2,3 +2,4 @@ darts
 streamlit
 pandas
 plotly
+openpyxl
