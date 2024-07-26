@@ -20,7 +20,7 @@ def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input
 
         rf = RandomForest(lags=1, n_estimators=10)
         rf.fit(scaled_target_series)
-        prediction_rf = rf.predict(input_years - 2023)
+        prediction_rf = rf.predict(input_years - 2020)
         
 
         lower_bound = prediction_rf - 0.572
@@ -43,7 +43,7 @@ def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input
 
         rf = RandomForest(lags=1, n_estimators=10)
         rf.fit([scaled_target_series,scaled_ir_series])
-        prediction_rf = rf.predict(input_years - 2023,scaled_target_series)
+        prediction_rf = rf.predict(input_years - 2020,scaled_target_series)
 
         lower_bound = prediction_rf - 0.572
         upper_bound = prediction_rf + 0.572
@@ -64,7 +64,7 @@ def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input
     elif input_external_factor == 'GDP':
         rf = RandomForest(lags=1, n_estimators=10)
         rf.fit([scaled_target_series,scaled_gdp_series])
-        prediction_rf = rf.predict(input_years - 2023,scaled_target_series)
+        prediction_rf = rf.predict(input_years - 2020,scaled_target_series)
 
         lower_bound = prediction_rf - 0.572
         upper_bound = prediction_rf + 0.572

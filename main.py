@@ -10,20 +10,24 @@ import plotly.graph_objects as go
 
 ## actual data
 
-
+cutoff_year = '2021'
 session = st.session_state
 
 actual_target_data = pd.read_excel('./data/filtered_filledna.xlsx')
 
 actual_target_data_ts = TimeSeries.from_dataframe(actual_target_data, time_col="FiscalYear")
+train_series, val_series = actual_target_data_ts.split_before(pd.Timestamp(cutoff_year))
 
 external_factors = pd.read_excel('./data/full_dataset_multivariate_gdp_interstRates.xlsx')
 
 interest_rates_series = TimeSeries.from_series(external_factors[external_factors['Broker']=='Weatherby, Samuel'].set_index('FiscalYear')['Interest Rate'])
 
-gdp_series = TimeSeries.from_series(external_factors[external_factors['Broker']=='Weatherby, Samuel'].set_index('FiscalYear')['Texas GDP'])
+interest_rates_series, _ = interest_rates_series.split_before(pd.Timestamp(cutoff_year))
 
-brokers = actual_target_data.columns[1:]
+gdp_series = TimeSeries.from_series(external_factors[external_factors['Broker']=='Weatherby, Samuel'].set_index('FiscalYear')['Texas GDP'])
+gdp_series, _ = gdp_series.split_before(pd.Timestamp(cutoff_year))
+
+brokers = train_series.columns[1:]
 types_external_factors = ['None','Interest Rates', 'GDP']
 
 st.set_page_config(page_title="Jill Brokerage Target",page_icon="📈",layout="wide")
@@ -38,14 +42,17 @@ with st.sidebar:
     
 
 
-l1,r1 = st.columns([2,2])
+l1,r1 = st.columns([0.5,2])
 
-input_years = l1.select_slider("Forecast Upto Year",[2024+i for i in range(3)])
+# input_years = l1.select_slider("Forecast Upto Year",[2021+i for i in range(3)])
+input_years = 2023
 session['input_years'] = input_years
 
 
     
-target_train_ts = actual_target_data_ts[input_broker]
+target_train_ts = train_series[input_broker]
+ground_truth_ts = val_series[input_broker]
+
 
 predicted = train.train_ts(target_train_ts,interest_rates_series,gdp_series,session['input_years'], session['input_external_factor'])
 
@@ -63,8 +70,18 @@ session['target_train_df'] = target_train_df
 
 predicted_df = pd.concat([target_train_df,predicted_df])
 
+
+
+true_df = val_series
+
 session['predicted'] = predicted_df
 
+ground_truth_df = ground_truth_ts.pd_dataframe().reset_index()
+target_train_df_tail = target_train_df.tail(1)
+
+ground_truth_df = pd.concat([target_train_df_tail,ground_truth_df ])
+
+session['ground_truth'] = ground_truth_df
 
 
 l, r = st.columns([2.7,1])
@@ -87,6 +104,8 @@ with l:
             )
 
 
+    fig_ground_truth = go.Figure()
+    fig_ground_truth.add_trace(go.Scatter(x=ground_truth_df['FiscalYear'], y=ground_truth_df[input_broker], mode='lines', line_color = 'blue', name='Ground Truth'))
     fig_area = go.Figure()
 
     fig_area.add_trace(go.Scatter(x=predicted_df['FiscalYear'], y =predicted_df['upper'],
@@ -104,7 +123,7 @@ with l:
 
 
 
-    fig_combined = go.Figure(data=fig_line.data + fig_area.data)
+    fig_combined = go.Figure(data=fig_line.data + fig_area.data + fig_ground_truth.data)
 
     # Update layout for combined figure
     fig_combined.update_layout(
@@ -126,11 +145,15 @@ with l:
     # st.dataframe(plot_df)
 
 
-
+session['predicted'] = predicted.pd_dataframe()
 with r:
     st.markdown(f'✦ Predicted Target range for {input_broker} ')
     predicted = predicted.pd_dataframe().rename(columns = {input_broker: 'Predicted Target ($)'})
 
+    for cols in predicted.select_dtypes(include=['float64']):
+        predicted[cols] = predicted[cols].astype('int')
+    
+ 
     style_predicted = utils.style_df(predicted)
     st.table(style_predicted)
 
@@ -145,7 +168,7 @@ st.caption("""
 unsafe_allow_html
 =True) 
 
-    
+# st.json(session)
 
 
 
