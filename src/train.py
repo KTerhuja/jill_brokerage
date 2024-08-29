@@ -8,7 +8,7 @@ from darts.models import RNNModel, ExponentialSmoothing, BlockRNNModel, NBEATSMo
 
 
 
-def train_ts(target_train_ts,interest_rates_series,gdp_series,input_years, input_external_factor):
+def train_ts(target_train_ts,interest_rates_series: None ,gdp_series: None,input_years, input_external_factor):
 
     target_scaler, ir_scaler, gdp_scaler = Scaler(), Scaler(), Scaler()
 
