@@ -4,7 +4,7 @@ from darts.timeseries import TimeSeries
 def combine(target_train, predicted):
 
     # target_df = target_train.pd_dataframe()
-    target_train['tag'] = 'target'
+    target_train['tag'] = 'Prev Sales'
     
 
     # predicted_df = predicted.pd_dataframe()

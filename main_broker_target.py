@@ -15,11 +15,16 @@ from darts.models import (
 
 session = st.session_state
 
+cutoff_year = '2023'
+
 actual = pd.read_excel('./data/filtered_actuals.xlsx')
 
 target = pd.read_excel('./data/filtered_broker_target_filledna.xlsx')
 
-diffs = pd.read_excel('./data/adjusted_values.xlsx')
+diffs = pd.read_excel('./data/deficit_values.xlsx')
+
+actual['FiscalYear'] = pd.to_datetime(actual['FiscalYear'], format = "%Y")
+diffs['FiscalYear'] = pd.to_datetime(diffs['FiscalYear'], format = "%Y")
 
 confidence_score = pd.read_excel('./data/confidence_score.xlsx')
 
@@ -30,6 +35,16 @@ broker_target_series = TimeSeries.from_dataframe(target, time_col='FiscalYear')
 diffs_series = TimeSeries.from_dataframe(diffs, time_col='FiscalYear')
 
 
+diffs.set_index('FiscalYear',inplace=True)
+diffs['Avg Shortfall'] = diffs.apply(lambda x: x.mean(), axis=1)
+
+individual_shortfall = diffs.apply(lambda x: x.mean())
+
+train_series, val_series = actual_series.split_before(pd.Timestamp(cutoff_year))
+
+diffs_train_series, diffs_val_series = diffs_series.split_before(pd.Timestamp(cutoff_year))
+
+
 brokers = actual.columns[1:]
 
 st.set_page_config(page_title="Jill Brokerage Target",page_icon="📈",layout="wide")
@@ -37,22 +52,40 @@ st.set_page_config(page_title="Jill Brokerage Target",page_icon="📈",layout="w
 
 
 with st.sidebar:
-    input_broker = st.selectbox("Choose Broker",brokers, placeholder='Haggar, James')
+    st.image('./data/jll_background.png')
+    input_broker = st.selectbox("Choose Broker",brokers, index=6)
     input_broker_target = st.number_input(label='Input broker\'s target')
     session['input_borker'] = input_broker
     session['input_broker_target'] = input_broker_target
 
 actual_ts = actual_series[input_broker]
 
-broker_target_ts = broker_target_series[input_broker].pd_dataframe().reset_index()
+train_actual_ts = train_series[input_broker]
 
-diffs_subset = diffs[['FiscalYear', input_broker]]
+val_actual_ts = val_series[input_broker]
 
-extended = pd.DataFrame({'FiscalYear':[2024], input_broker:[input_broker_target]})
+diffs_train_ts = diffs_train_series[input_broker]
 
-extended_subset = pd.concat([diffs_subset, extended])
+diffs_val_ts = diffs_val_series[input_broker]
 
-extended_subset_series = TimeSeries.from_dataframe(extended_subset, time_col='FiscalYear')
+extended_subset_series = diffs_train_ts.append_values([input_broker_target])
+
+train_actual_df = train_actual_ts.pd_dataframe().reset_index()
+
+
+session['train_actual_df'] = train_actual_df
+
+
+val_actual_df = val_actual_ts.pd_dataframe().reset_index()
+
+# predicted_df = pd.concat([train_actual_df, prediction_df])
+
+val_plot_df = pd.concat([train_actual_df.tail(1), val_actual_df])
+
+session['val_plot_df'] = val_plot_df
+
+
+
 
 if input_broker_target:
 
@@ -60,107 +93,154 @@ if input_broker_target:
     # actual_scaler = Scaler()
 
     # # scaled_target_series = actual_scaler.fit_transform(actual_ts)
+
+    actual_scaler, diff_scaler = Scaler(), Scaler()
+
+    # scaled_actual_ts = actual_scaler.fit_transform(actual_ts)
+
+    scaled_actual_train_ts = actual_scaler.fit_transform(train_actual_ts)
+
+    scaled_actual_val_ts = actual_scaler.transform(val_actual_ts)
     
+    scaled_diff_ts = diff_scaler.fit_transform(diffs_train_ts)
 
-    # rf = RandomForest(lags=1, n_estimators=10)
-    # rf.fit(actual_series[input_broker], future_covariates=diffs_series[input_broker])
-    # prediction_rf = rf.predict(1, future_covariates=extended_subset_series)
+    scaled_extended_ts = diff_scaler.transform(extended_subset_series)
 
+    rf = RandomForest(lags=1, n_estimators=10, lags_future_covariates=[0])
 
-    # scaled_predicted_df = prediction_rf.pd_dataframe().reset_index()
+    rf.fit(scaled_actual_train_ts, future_covariates = scaled_diff_ts)
 
-   
-    model_name = "RNN_test"
-    model_futcov = RNNModel(
-        model="LSTM",
-        hidden_dim=6,
-        batch_size=2,
-        n_epochs=10,
-        random_state=0,
-        training_length=3,
-        input_chunk_length=2,
-        model_name=model_name,
-        save_checkpoints=True,  # store model states: latest and best performing of validation set
-        force_reset=True
-    )
+    prediction_rf = rf.predict(1, future_covariates=scaled_extended_ts)
 
-    model_futcov.fit(
-    series= actual_ts[input_broker],
-    future_covariates= diffs_series[input_broker]
-)
-    
-    predicted = model_futcov.predict(1, future_covariates=extended_subset_series)
+    inverse_prediction = actual_scaler.inverse_transform(prediction_rf)
 
     #---------------training----------------------
 
-    st.write(predicted)
+    predicted_value = inverse_prediction[0].pd_series().values[0]
+    val_value = val_actual_ts[0].pd_series().values[0]
 
-    # actual_ts_df = actual_ts.pd_dataframe().reset_index()
+    deficit_value = input_broker_target - predicted_value
 
-    # session['actual_ts_df'] = actual_ts_df
+    diffs_extend_ts = diffs_train_ts.append_values([deficit_value])
 
-    # predicted_df = pd.concat([actual_ts_df, scaled_predicted_df])
+    diffs_extend_df = diffs_extend_ts.pd_dataframe().reset_index()
 
-    # session['predicted_df'] = predicted_df
+    scaled_actual_train_ts = scaled_actual_train_ts.pd_dataframe().reset_index()
 
-    # plot_df = utils.combine(actual_ts_df, scaled_predicted_df)
+    prediction_df = inverse_prediction.pd_dataframe().reset_index()
 
-    # session['plot_data'] = plot_df
+    session['scaled_actual_train_ts'] = scaled_actual_train_ts
 
-    # plot_df['FiscalYear'] = pd.to_datetime(plot_df['FiscalYear'], format = '%Y')
+    predicted_df = pd.concat([train_actual_df, prediction_df])
 
-    # session['plot_data'] = plot_df
-
-
-
-    # # session['plot_data'] = plot_df
-
-    # plot_df['FiscalYear'] = pd.to_datetime(plot_df['FiscalYear'], format = '%Y')
-
-    # fig_line = px.line(
-    #     plot_df,
-    #     x=plot_df['FiscalYear'],
-    #     y=f'{input_broker}',
-    #     color="tag",
-    #     title=f"Forecasted Broker target",
-    #     color_discrete_sequence=["green","crimson"],
-    #     height=700,
-    #     width= 1000
-    #     )
+    session['predicted_df'] = predicted_df
 
 
+    meta_data = pd.DataFrame({'Year': ['2024'],'Actual': [int(val_value)], 'Predicted': [int(predicted_value)]})
 
-    # fig_broker_target = go.Figure()
-    # fig_broker_target.add_trace(go.Scatter(x=diffs_subset['FiscalYear'], y=diffs_subset[input_broker], mode='lines', line_color = 'blue', name='Broker Target'))
+    #-------------plot-------------------------
+
+    tab1, tab2 = st.tabs(['Predicted Target', 'Individual Shorfall'])
+
+    with tab1:
+    
+        left_plot, right_plot = st.columns([2,1])
+
+        with left_plot:
+
+            plot_df = utils.combine(train_actual_df, prediction_df)
+
+            plot_df['FiscalYear'] = pd.to_datetime(plot_df['FiscalYear'], format = '%Y')
+
+            session['plot_data'] = plot_df
+
+            fig_line = px.line(
+                plot_df,
+                x=plot_df['FiscalYear'],
+                y=f'{input_broker}',
+                color="tag",
+                title=f"Forecasted Broker target",
+                color_discrete_sequence=["green","crimson"],
+                height=500,
+                width= 1000
+                )
+
+            fig_val = go.Figure()
+            fig_val.add_trace(go.Scatter(x=val_plot_df['FiscalYear'], y=val_plot_df[input_broker], mode='lines', line_color = 'yellow', name='Ground Truth'))
+
+            
+            fig_broker_target = go.Figure()
+            fig_broker_target.add_trace(go.Scatter(x=diffs_extend_df['FiscalYear'], y=diffs_extend_df[input_broker], mode='lines', line_color = 'blue', name='Shortfall'))
 
 
 
-    # fig_combined = go.Figure(data=fig_line.data + fig_broker_target.data)
+            fig_combined = go.Figure(data=fig_line.data + fig_val.data + fig_broker_target.data )
 
-    # # Update layout for combined figure
-    # fig_combined.update_layout(
-    #     title=f'Forecasted target for {input_broker}',
-    #     title_x=0.3,
-    #     xaxis_title='Year',
-    #     yaxis_title='Value',
-    #     height=700,
-    #     width=1000
-    # )
+            # Update layout for combined figure
+            fig_combined.update_layout(
+                title=f'Forecasted Sales for {input_broker}',
+                title_x=0.3,
+                xaxis_title='Year',
+                yaxis_title='Value',
+                height=450,
+                width=1000
+            )
+            st.plotly_chart(fig_combined)
 
-    # # Show the combined figure
-    # # fig_combined.show()  
-    # # fig_combined.update_layout({ 'plot_bgcolor': '#F5EDED'})
-    # st.plotly_chart(fig_combined)
+            st.dataframe(meta_data,hide_index= True)
+
+            
+
+
+
+
+        with right_plot:
+
+            shortfall_yoy = go.Figure()
+            shortfall_yoy.add_trace(go.Scatter(x=diffs.index, y=diffs['Avg Shortfall'], mode='lines', line_color = 'blue', name='Average Shortfall YoY'))
+
+            shortfall_yoy.update_layout(
+                title=f'Average Shortfall YoY',
+                title_x=0.3,
+                xaxis_title='Year',
+                yaxis_title='Shorfall',
+                height=450,
+                width=1000
+            )
+            st.plotly_chart(shortfall_yoy)
+
+
+
+    with tab2:
+
+        individual_shortfall = individual_shortfall.drop('Avg Shortfall')
+
+        individual_shortfall_yoy = go.Figure()
+        individual_shortfall_yoy.add_trace(go.Bar(
+            x=individual_shortfall.index, 
+            y=individual_shortfall.values, 
+            marker_color='blue', 
+            name='Average Individual Shortfall'
+        ))
+
+        st.plotly_chart(individual_shortfall_yoy)
+
+
+
+
+
+
+        
 
 # st.json(session)
 
-st.caption("""
-<style>body
-{zoom: 80%;}
-</style>
-""",
-unsafe_allow_html
-=True) 
+# st.caption("""
+# <style>body
+# {zoom: 80%;}
+# </style>
+# """,
+# unsafe_allow_html
+# =True) 
 
 
 
