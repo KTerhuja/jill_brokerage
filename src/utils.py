@@ -3,17 +3,17 @@ from darts.timeseries import TimeSeries
 
 def combine(target_train, predicted):
 
-    target_df = target_train.pd_dataframe()
-    target_df['tag'] = 'target'
+    # target_df = target_train.pd_dataframe()
+    target_train['tag'] = 'Prev Sales'
     
 
-    predicted_df = predicted.pd_dataframe()
-    connector = target_df.tail(1)
+    # predicted_df = predicted.pd_dataframe()
+    connector = target_train.tail(1)
     connector['tag'] = 'predicted'
     
-    predicted_df['tag'] = 'predicted'
+    predicted['tag'] = 'predicted'
 
-    concat = pd.concat([target_df,connector, predicted_df] )
+    concat = pd.concat([target_train,connector, predicted] )
 
     return concat
 
